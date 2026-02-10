@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { CHARACTERS, MOCK_TASKS, MOCK_STORE_ITEMS, MOCK_POSTS, COUNTRIES, TRAVEL_PURPOSES, STORE_CATEGORIES, MOCK_CHAT_ROOMS } from './constants';
 import CharacterCard from './components/CharacterCard';
-import ChatBot from './components/ChatBot';
+//import ChatBot from './components/ChatBot';
 import { 
   Home, ShoppingBag, MessageSquare, Users, MessageCircle, 
   Search, Bell, Bookmark, Settings, Plus, 
@@ -1669,7 +1669,23 @@ const App: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             {activeTab === 'home' && renderHome()}
             {activeTab === 'store' && renderStore()}
-            {activeTab === 'ai' && <ChatBot inline />}
+            {/* --- 수정 시작 --- */}
+            {activeTab === 'ai' && (
+               <div className="max-w-4xl mx-auto flex flex-col items-center justify-center h-[600px] text-center p-8 border-4 border-black rounded-xl bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-in fade-in zoom-in duration-300">
+               <div className="w-32 h-32 bg-yellow-300 rounded-full flex items-center justify-center mb-6 text-6xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                     🤖
+               </div>
+               <h3 className="text-3xl font-black italic mb-4">AI Assistant</h3>
+               <p className="font-bold text-gray-500 mb-8 text-lg">
+                     현재 AI 서비스 시스템 점검 중입니다.<br/>
+                     더 똑똑해진 모습으로 곧 돌아올게요! 🚀
+               </p>
+               <button className="px-8 py-4 bg-black text-white font-black rounded-full text-lg hover:bg-gray-800 transition-colors shadow-[4px_4px_0px_0px_rgba(100,100,100,0.5)]">
+                     다른 기능 둘러보기
+               </button>
+               </div>
+            )}
+            {/* --- 수정 끝 --- */}
             {activeTab === 'community' && renderCommunity()}
             {activeTab === 'chat' && renderChat()}
             {activeTab === 'mypage' && renderMyPage()}
