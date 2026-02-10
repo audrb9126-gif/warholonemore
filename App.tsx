@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CHARACTERS, MOCK_TASKS, MOCK_STORE_ITEMS, MOCK_POSTS, COUNTRIES, STORE_CATEGORIES, MOCK_CHAT_ROOMS } from './constants';
-import ChatBot from './components/ChatBot';
+//import ChatBot from './components/ChatBot';
 import { 
   Home, ShoppingBag, MessageSquare, Users, MessageCircle, 
   Search, Bell, Bookmark, Settings, Plus, 
@@ -1793,7 +1793,7 @@ const App: React.FC = () => {
         {showUpgradeModal && renderUpgradeModal()}
         {showReviewModal && renderReviewModal()}
         {renderBookmarksDrawer()}
-        {activeTab !== 'ai' && <ChatBot />}
+        {/*{activeTab !== 'ai' && <ChatBot />}*/}
         <footer className="mt-auto bg-white border-t-4 border-black p-10">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
             <div className="text-center md:text-left">
