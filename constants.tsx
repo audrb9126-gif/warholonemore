@@ -326,6 +326,84 @@ export const MOCK_STORE_ITEMS: StoreItem[] = [
 ];
 
 export const MOCK_POSTS: CommunityPost[] = [
+  {
+    id: 'n1',
+    title: '[공지] 워홀원모어 시스템 정기 점검 안내 (3/15)',
+    content: '보다 안정적인 서비스를 위해 서버 점검이 진행될 예정입니다. 점검 시간 동안은 앱 접속이 원활하지 않을 수 있습니다. 이용에 불편을 드려 죄송합니다.',
+    author: '워홀원모어',
+    time: '방금전',
+    views: 1205,
+    likes: 0,
+    scraps: 0,
+    comments: 0,
+    category: 'notice',
+    tag: '공지'
+  },
+  {
+    id: 'n2',
+    title: '[필독] 클린한 커뮤니티 문화를 위한 이용 수칙',
+    content: '안녕하세요, 워홀원모어 팀입니다. 서로 배려하고 존중하는 커뮤니티를 만들기 위해 다음 수칙을 꼭 지켜주세요. 비방, 욕설, 광고성 게시글은 예고 없이 삭제될 수 있습니다.',
+    author: '운영자',
+    time: '23.10.01',
+    views: 3420,
+    likes: 56,
+    scraps: 12,
+    comments: 4,
+    category: 'notice',
+    tag: '공지'
+  },
+  {
+    id: 'n3',
+    title: '[이벤트] 워홀원모어 런칭 기념! 항공권 지원 이벤트 당첨자 발표',
+    content: '많은 분들이 참여해주신 런칭 이벤트 당첨자를 발표합니다! 당첨되신 분들에게는 개별 메시지로 연락드릴 예정입니다. 참여해주신 모든 분들께 감사드립니다.',
+    author: '이벤트담당자',
+    time: '23.09.28',
+    views: 5600,
+    likes: 230,
+    scraps: 45,
+    comments: 120,
+    category: 'notice',
+    tag: '공지'
+  },
+  { 
+    id: 'm1', 
+    title: '[멘토칼럼] 워홀 실패하지 않는 마인드셋 3가지', 
+    content: '돈도 중요하지만 결국 남는 건 사람과 경험입니다. 멘토가 전하는 진짜 워홀 이야기. 초기 정착 단계에서 멘탈이 흔들릴 때 꼭 읽어보세요.',
+    author: '공식멘토_지니', 
+    time: '12:00',
+    views: 450,
+    likes: 125,
+    scraps: 45,
+    comments: 22, 
+    category: 'popular',
+    tag: '멘토링'
+  },
+  { 
+    id: 'm2', 
+    title: '[취업꿀팁] 영어 초보가 오지잡 구한 현실 루틴 공개', 
+    content: '매일 아침 6시 기상, 이력서 50장 돌리기... 제가 성공한 비법은 단순합니다. 포기하지 않고 두드리는 자에게 문은 열립니다.',
+    author: '취업멘토_라이언', 
+    time: '11:30',
+    views: 380,
+    likes: 98,
+    scraps: 30,
+    comments: 15, 
+    category: 'popular',
+    tag: '멘토링'
+  },
+  { 
+    id: 'm3', 
+    title: '[커리어] 워홀 1년, 한국 돌아와서 뭐하지? (취업 연계 팁)', 
+    content: '워홀 경험을 스펙으로 만드는 방법, 자소서 작성 꿀팁 대방출. 귀국 후 취업 고민하지 마세요.',
+    author: '커리어멘토_수', 
+    time: '10:15',
+    views: 512,
+    likes: 156,
+    scraps: 89,
+    comments: 41, 
+    category: 'popular',
+    tag: '멘토링'
+  },
   { 
     id: '1', 
     title: '호주 워홀 첫잡, 언제 부터 지원하는 게 좋을까요', 
@@ -340,57 +418,71 @@ export const MOCK_POSTS: CommunityPost[] = [
     tag: '질문'
   },
   { 
-    id: '2', 
-    title: '출국 전날준비, 이건 꼭 하고 가세요', 
-    content: '다른 건 몰라도 상비약이랑 공인인증서 갱신은 필수입니다...',
-    author: '시드니멘토', 
-    time: '12:42',
-    views: 124,
-    likes: 8,
-    scraps: 3,
-    comments: 5, 
-    category: 'all',
-    tag: '정보'
-  },
-  { 
-    id: '3', 
-    title: '인터뷰에서 자주 나오는 질문 TOP 5', 
-    content: '1. 자기소개 2. 비자 상태 3. 경력 유무 4. 언제부터...',
-    author: '브리즈번선배', 
-    time: '11:58',
-    views: 124,
-    likes: 8,
-    scraps: 3,
-    comments: 4, 
-    category: 'popular',
-    tag: '정보'
-  },
-  { 
-    id: '4', 
-    title: '영문 이력서, 이 문장은 진짜 잘 먹힙니다', 
-    content: '요즘 워홀 알바도 "자기소개서"가 기본이라던데요...',
-    author: '인스펙', 
-    time: '10:15',
-    views: 124,
-    likes: 8,
-    scraps: 3,
-    comments: 2, 
-    category: 'popular',
-    tag: '꿀팁'
-  },
-  { 
     id: '5', 
     title: '현지 통신, eSIM vs 유심 뭐가 나을까요?', 
     content: '아이폰 14 쓰는데 이심으로 할지 물리 유심할지 고민...',
     author: '골드코스트', 
-    time: '10:15',
-    views: 124,
-    likes: 8,
-    scraps: 3,
-    comments: 2, 
+    time: '09:40',
+    views: 88,
+    likes: 5,
+    scraps: 1,
+    comments: 3, 
     category: 'all',
     tag: '질문'
   },
+  // 중고장터 (Used Market) Posts
+  {
+    id: 'used_1',
+    title: '🚗 워홀 끝나는데 중고차 시세 보다 싸게 팝니다~ (급처)',
+    content: '2015년식 도요타 캠리입니다. 15만km 탔고 레지 3개월 남았습니다. 귀국 날짜 잡혀서 급하게 내놓습니다. 쿨거시 네고 가능! 상태 아주 좋습니다. 브리즈번 시티 픽업 가능해요.',
+    author: '브리즈번_드라이버',
+    time: '방금전',
+    views: 230,
+    likes: 15,
+    scraps: 8,
+    comments: 12,
+    category: 'all',
+    tag: '중고'
+  },
+  {
+    id: 'used_2',
+    title: '[무료나눔] 전기장판, 헤어드라이기, 멀티탭 나눔합니다',
+    content: '한국 돌아가서 짐 줄이려고 나눔해요. 시티 픽업만 가능합니다. 상태 다 좋아요. 먼저 오시는 분께 드립니다!',
+    author: '짐정리중',
+    time: '30분전',
+    views: 150,
+    likes: 20,
+    scraps: 5,
+    comments: 8,
+    category: 'all',
+    tag: '중고'
+  },
+  {
+    id: 'used_3',
+    title: '🚲 상태 좋은 자전거 헬멧 포함 팝니다 ($50)',
+    content: '출퇴근용으로 3개월 썼어요. 타이어 바람 빵빵하고 브레이크 잘 듭니다. 헬멧이랑 자물쇠도 같이 드려요.',
+    author: '라이더',
+    time: '1시간전',
+    views: 95,
+    likes: 6,
+    scraps: 2,
+    comments: 4,
+    category: 'all',
+    tag: '중고'
+  },
+  {
+    id: 'used_4',
+    title: '아이엘츠(IELTS) 교재 팝니다 (필기감 거의 없음)',
+    content: '공부하려고 샀는데 학원 다니게 돼서 팝니다. 캠브리지 16, 17, 18권 일괄 판매 원해요.',
+    author: '공부벌레',
+    time: '3시간전',
+    views: 60,
+    likes: 3,
+    scraps: 1,
+    comments: 2,
+    category: 'all',
+    tag: '중고'
+  }
 ];
 
 // Expanded Chat Rooms for Global Chat Functionality
@@ -441,7 +533,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'ca_2',
     title: '밴쿠버 워홀러 수다방 (카페잡)',
-    imageUrl: 'https://images.unsplash.com/photo-1560170433-41e974e6284f?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://media.triple.guide/triple-cms/c_limit,f_auto,h_1024,w_1024/9d3201c9-c8d7-41e4-b4c6-7180eed6aeeb.jpeg',
     participants: 820,
     lastMessageTime: '15분전',
     tags: ['캐나다']
@@ -449,7 +541,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'ca_3',
     title: '휘슬러/밴프 스키장 인맥 만들기',
-    imageUrl: 'https://images.unsplash.com/photo-1488953155160-24436573752e?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcROB21BcCBOQAR6_wKqiMVei-CosBGVidSlSw&s',
     participants: 410,
     lastMessageTime: '30분전',
     tags: ['캐나다']
@@ -457,7 +549,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'ca_4',
     title: '몬트리올 불어 공부 & 생활',
-    imageUrl: 'https://images.unsplash.com/photo-1519178173668-2f63a563de56?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/1b/08/71/fd/st-paul-street-in-summer.jpg?w=500&h=500&s=1',
     participants: 320,
     lastMessageTime: '1시간전',
     tags: ['캐나다']
@@ -467,7 +559,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'nz_1',
     title: '오클랜드 시티잡 & 플랫 정보',
-    imageUrl: 'https://images.unsplash.com/photo-1507699622177-f888916f656d?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSPOz_YnFf89Pdv0ihDMD4D2ifCdCyUIMxDUQ&s',
     participants: 600,
     lastMessageTime: '10분전',
     tags: ['뉴질랜드']
@@ -509,7 +601,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'jp_3',
     title: '일본 편의점/이자카야 알바 팁',
-    imageUrl: 'https://images.unsplash.com/photo-1554761066-d6677465333f?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTRKZR6FLfmeBAkWgvCSqJlBqedt1TondOH0g&s',
     participants: 1100,
     lastMessageTime: '3분전',
     tags: ['일본']
@@ -517,7 +609,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'jp_4',
     title: 'JLPT 공부 및 언어교환',
-    imageUrl: 'https://images.unsplash.com/photo-1528164344705-475426879fdc?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTHtPiRP10HuedfLae6lR2h7yUqJxZ8wKeDig&s',
     participants: 600,
     lastMessageTime: '1시간전',
     tags: ['일본']
@@ -543,7 +635,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'uk_3',
     title: '영국 펍/축구 직관 번개⚡️',
-    imageUrl: 'https://images.unsplash.com/photo-1511225501373-5110c79dbd63?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSbuSK5qIr-HBPwjY8axaBQn0FXCxUSLTN4fg&s',
     participants: 550,
     lastMessageTime: '10분전',
     tags: ['영국']
@@ -595,7 +687,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: 'fr_3',
     title: '한불 언어교환 & 피크닉',
-    imageUrl: 'https://images.unsplash.com/photo-1565881606991-789a8d579339?auto=format&fit=crop&q=80&w=100',
+    imageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQydMOBLMqLxBMAUA0gdmY2vY_9U6w0U9neKg&s',
     participants: 350,
     lastMessageTime: '15분전',
     tags: ['프랑스']
