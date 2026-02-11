@@ -8,10 +8,11 @@ import {
   LogOut, HelpCircle,
   CreditCard, Smartphone, Bus, Banknote, Trash2, Plane, Calendar, Briefcase, Globe, FileText, ArrowRight, X, Star, Clock, Phone,
   Menu, ThumbsUp, MessageSquare as MessageIcon, User, Edit3, Shield, CreditCard as CardIcon, Check, ExternalLink, Info as InfoIcon,
-  PartyPopper, ShoppingCart, Send as SendIcon, Sparkles, Inbox
+  PartyPopper, ShoppingCart, Send as SendIcon, Sparkles, Inbox, LogIn
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 import { TabType } from './types';
+import { supabase } from './services/supabaseClient';
 
 // Importing the image as requested (Using the high-quality 3D URL directly for stability in this environment)
 const PilotImg = "https://i.postimg.cc/Y0rSvJX0/pilot-removebg-preview.png";
@@ -71,9 +72,7 @@ const App: React.FC = () => {
   const [completedTabs, setCompletedTabs] = useState<string[]>([]);
 
   // State for Completed Tasks (List Items)
-  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>(
-    MOCK_TASKS.filter(t => t.isCompleted).map(t => t.id)
-  );
+  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
 
   // State for Cart Items (Linked to Saved Items in MyPage)
   const [cartItems, setCartItems] = useState<string[]>([]);
@@ -138,6 +137,25 @@ const App: React.FC = () => {
   // Right Column Mode: 'default', 'task_detail', 'reservation'
   const [rightColMode, setRightColMode] = useState<'default' | 'task_detail' | 'reservation'>('default');
   
+  // --- 로그인 관련 ---
+  const [session, setSession] = useState<any>(null); // 로그인 정보
+  const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordConfirmInput, setPasswordConfirmInput] = useState(''); // 비밀번호 확인 입력
+  const [nicknameInput, setNicknameInput] = useState(''); // 닉네임 입력
+  const [showLoginModal, setShowLoginModal] = useState(false); // 로그인 모달
+  const [isSignUpMode, setIsSignUpMode] = useState(false); // 회원가입 모드
+
+  // --- 커뮤니티 데이터 관련 ---
+  const [realPosts, setRealPosts] = useState<any[]>([]); // 진짜 게시글 목록
+  const [realComments, setRealComments] = useState<any[]>([]); // 댓글 목록
+  const [localComments, setLocalComments] = useState<Record<string, any[]>>({}); // 예시 글 댓글 목록 (로컬)
+  const [writingTitle, setWritingTitle] = useState(''); // 글쓰기 제목
+  const [writingContent, setWritingContent] = useState(''); // 글쓰기 내용
+  const [writingComment, setWritingComment] = useState(''); // 댓글 쓰기 내용
+  const [selectedPostId, setSelectedPostId] = useState<number | string | null>(null); // 현재 보고 있는 글 ID
+  const [showWriteModal, setShowWriteModal] = useState(false); // 글쓰기 창 띄우기
+
   // Ref for scroll to preparation list
   const prepListRef = useRef<HTMLDivElement>(null);
 
@@ -178,6 +196,159 @@ const App: React.FC = () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [showNotifications, showBookmarks]);
+
+  // 1. 초기 세팅: 로그인 체크 & 게시글 불러오기
+  useEffect(() => {
+    // 로그인 상태 확인
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+
+    // 게시글 불러오기
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .order('created_at', { ascending: false }); // 최신순 정렬
+    if (error) console.error('Error fetching posts:', error);
+    else setRealPosts(data || []);
+  };
+
+  const fetchComments = async (postId: number) => {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true }); // 과거순 정렬
+    if (error) console.error('Error fetching comments:', error);
+    else setRealComments(data || []);
+  };
+
+  // 비밀번호 유효성 검사 함수
+  const validatePassword = (password: string) => {
+    const minLength = 8;
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return password.length >= minLength && hasNumber && hasSpecialChar;
+  };
+
+  // 2. 로그인 & 회원가입 & 로그아웃
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({ email: emailInput, password: passwordInput });
+    if (error) alert(error.message);
+    else {
+        setShowLoginModal(false);
+        // alert("로그인되었습니다!");
+    }
+  };
+
+  const handleSignUp = async () => {
+    // 유효성 검사
+    if (!validatePassword(passwordInput)) {
+        return alert("비밀번호는 8자리 이상이어야 하며, 숫자와 특수문자를 포함해야 합니다.");
+    }
+    if (passwordInput !== passwordConfirmInput) {
+        return alert("비밀번호가 일치하지 않습니다.");
+    }
+
+    const { error } = await supabase.auth.signUp({ 
+        email: emailInput, 
+        password: passwordInput,
+        options: {
+            data: {
+                full_name: nicknameInput, // 닉네임 저장
+            }
+        }
+    });
+    if (error) alert(error.message);
+    else {
+        alert("이메일로 확인 링크를 보냈습니다. 확인 후 로그인해주세요!");
+        setShowLoginModal(false);
+        // 입력 필드 초기화
+        setPasswordInput('');
+        setPasswordConfirmInput('');
+        setNicknameInput('');
+        setEmailInput('');
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    alert("로그아웃 되었습니다.");
+  };
+
+  // 사용자 이름 가져오기
+  const getUserName = () => {
+      if (!session) return '게스트';
+      return session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '알 수 없음';
+  };
+
+  // 3. 글쓰기 & 댓글쓰기
+  const handleCreatePost = async () => {
+    if (!session) return alert("로그인이 필요합니다.");
+    if (!writingTitle || !writingContent) return alert("제목과 내용을 입력해주세요.");
+
+    const { error } = await supabase.from('posts').insert([
+      { 
+        title: writingTitle, 
+        content: writingContent, 
+        user_id: session.user.id, 
+        author_email: session.user.email 
+      }
+    ]);
+
+    if (error) alert(error.message);
+    else {
+      alert("게시글이 등록되었습니다!");
+      setShowWriteModal(false);
+      setWritingTitle('');
+      setWritingContent('');
+      fetchPosts(); // 목록 새로고침
+    }
+  };
+
+  const handleCreateComment = async (postId: number | string) => {
+    if (!session) return alert("로그인이 필요합니다.");
+    if (!writingComment) return;
+
+    // 예시 글(문자열 ID)인 경우 로컬 상태 업데이트
+    if (typeof postId === 'string') {
+        const newComment = {
+            id: `local_${Date.now()}`,
+            content: writingComment,
+            post_id: postId,
+            user_id: session.user.id,
+            author_email: session.user.email,
+            created_at: new Date().toISOString()
+        };
+        
+        setLocalComments(prev => ({
+            ...prev,
+            [postId]: [...(prev[postId] || []), newComment]
+        }));
+        setWritingComment('');
+        return;
+    }
+
+    // 실제 글(숫자 ID)인 경우 Supabase 저장
+    const { error } = await supabase.from('comments').insert([
+      { 
+        content: writingComment, 
+        post_id: postId, 
+        user_id: session.user.id, 
+        author_email: session.user.email 
+      }
+    ]);
+
+    if (error) alert(error.message);
+    else {
+      setWritingComment('');
+      fetchComments(postId); // 댓글 새로고침
+    }
+  };
 
   const toggleTabCompletion = (e: React.MouseEvent, tab: string) => {
     e.stopPropagation();
@@ -377,6 +548,84 @@ const App: React.FC = () => {
   `;
 
   // Render Functions for Modals
+  const renderLoginModal = () => (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] animate-in fade-in p-4" onClick={() => setShowLoginModal(false)}>
+        <div className="bg-white w-full max-w-md p-8 rounded-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setShowLoginModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-black"><X size={24}/></button>
+            <h2 className="text-3xl font-black mb-6 text-center italic">{isSignUpMode ? 'JOIN US' : 'LOGIN'}</h2>
+            
+            <div className="space-y-4">
+                {isSignUpMode && (
+                  <div>
+                    <label className="block text-xs font-black mb-1">닉네임</label>
+                    <input 
+                      className="w-full border-2 border-black p-3 rounded-lg font-bold"
+                      placeholder="홍길동"
+                      value={nicknameInput}
+                      onChange={e => setNicknameInput(e.target.value)}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-black mb-1">이메일</label>
+                  <input 
+                    className="w-full border-2 border-black p-3 rounded-lg font-bold"
+                    placeholder="example@email.com"
+                    value={emailInput}
+                    onChange={e => setEmailInput(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black mb-1">비밀번호</label>
+                  <input 
+                    type="password"
+                    className="w-full border-2 border-black p-3 rounded-lg font-bold"
+                    placeholder="8자리 이상, 숫자/특수문자 포함"
+                    value={passwordInput}
+                    onChange={e => setPasswordInput(e.target.value)}
+                  />
+                </div>
+                {isSignUpMode && (
+                    <div>
+                      <label className="block text-xs font-black mb-1">비밀번호 확인</label>
+                      <input 
+                        type="password"
+                        className={`w-full border-2 border-black p-3 rounded-lg font-bold ${
+                            passwordConfirmInput && passwordInput !== passwordConfirmInput ? 'border-red-500 focus:border-red-500' : ''
+                        }`}
+                        placeholder="비밀번호를 다시 입력해주세요"
+                        value={passwordConfirmInput}
+                        onChange={e => setPasswordConfirmInput(e.target.value)}
+                      />
+                      {passwordConfirmInput && passwordInput !== passwordConfirmInput && (
+                          <p className="text-red-500 text-xs font-bold mt-1">비밀번호가 일치하지 않습니다.</p>
+                      )}
+                    </div>
+                )}
+                
+                <button 
+                  onClick={isSignUpMode ? handleSignUp : handleLogin}
+                  className="w-full bg-blue-600 text-white py-4 rounded-lg font-black text-lg hover:bg-blue-700 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+                >
+                  {isSignUpMode ? '가입하기' : '로그인하기'}
+                </button>
+
+                <div className="text-center mt-4">
+                  <span className="text-xs font-bold text-gray-500">
+                    {isSignUpMode ? '이미 계정이 있으신가요?' : '아직 회원이 아니신가요?'}
+                  </span>
+                  <button 
+                    onClick={() => setIsSignUpMode(!isSignUpMode)}
+                    className="ml-2 text-xs font-black text-black underline"
+                  >
+                    {isSignUpMode ? '로그인' : '회원가입'}
+                  </button>
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+
   const renderWelcomePopup = () => (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] animate-in fade-in duration-500 p-4" onClick={() => setShowWelcomePopup(false)}>
         <div className="bg-white border-4 border-black p-8 rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-md relative text-center" onClick={(e) => e.stopPropagation()}>
@@ -454,7 +703,7 @@ const App: React.FC = () => {
   const renderInquiryModal = () => (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] animate-in fade-in duration-200 p-4">
         <div className="bg-white border-4 border-black p-6 rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-sm relative" onClick={(e) => e.stopPropagation()}>
-            <button 
+            <button
                 onClick={() => setShowInquiryModal(false)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-black"
             >
@@ -476,7 +725,7 @@ const App: React.FC = () => {
                             {inquiryMessage.length} / 50
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={() => {
                             if(inquiryMessage.trim().length === 0) return;
                             setIsInquirySuccess(true);
@@ -496,7 +745,7 @@ const App: React.FC = () => {
                         문의가 성공적으로 전송되었습니다.<br/>
                         빠른 시일 내에 답변 드리겠습니다.
                     </p>
-                    <button 
+                    <button
                         onClick={() => setShowInquiryModal(false)}
                         className="w-full bg-black text-white py-3 rounded-lg font-black text-sm hover:bg-gray-800 transition-colors"
                     >
@@ -511,7 +760,7 @@ const App: React.FC = () => {
   const renderReviewModal = () => (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] animate-in fade-in duration-200 p-4" onClick={() => setShowReviewModal(false)}>
         <div className="bg-white border-4 border-black p-8 rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-full max-w-md relative" onClick={(e) => e.stopPropagation()}>
-            <button 
+            <button
                 onClick={() => setShowReviewModal(false)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-black"
             >
@@ -520,7 +769,7 @@ const App: React.FC = () => {
             {!isReviewSent ? (
                 <>
                     <h3 className="text-2xl font-black mb-2 flex items-center gap-2">
-                        <MessageSquare className="text-yellow-400 fill-yellow-400" size={28} /> 
+                        <MessageSquare className="text-yellow-400 fill-yellow-400" size={28} />
                         방문자 리뷰
                     </h3>
                     <p className="text-sm font-bold text-gray-500 mb-6">서비스에 대한 솔직한 후기를 남겨주세요.</p>
@@ -534,7 +783,7 @@ const App: React.FC = () => {
                                 onChange={(e) => setReviewContent(e.target.value)}
                             />
                         </div>
-                        <button 
+                        <button
                             onClick={handleReviewSubmit}
                             disabled={isSendingReview}
                             className={`w-full py-4 rounded-lg font-black text-sm border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all flex items-center justify-center gap-2
@@ -1161,7 +1410,7 @@ const App: React.FC = () => {
           <div key={item.id} className="bg-white border-2 border-black rounded-xl overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all group">
             <div className="h-48 overflow-hidden border-b-2 border-black relative">
               <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-              <button 
+              <button
                 onClick={(e) => toggleCartItem(e, item.id)}
                 className="absolute top-2 right-2 p-2 bg-white border-2 border-black rounded-full hover:bg-yellow-300 transition-colors"
               >
@@ -1191,7 +1440,30 @@ const App: React.FC = () => {
   );
 
   const renderCommunity = () => {
-    const filteredPosts = MOCK_POSTS.filter(post => {
+    // Combine Real Posts and Mock Posts
+    const formattedRealPosts = realPosts.map(post => ({
+      id: post.id, // Keep original ID (number)
+      title: post.title,
+      content: post.content,
+      author: post.author_email?.split('@')[0] || 'Anonymous',
+      time: new Date(post.created_at).toLocaleDateString(),
+      views: 0,
+      likes: 0,
+      comments: 0,
+      tag: '일반',
+      category: 'latest',
+      isReal: true // Flag to identify real posts
+    }));
+
+    // MOCK_POSTS need to be compatible
+    const compatibleMockPosts = MOCK_POSTS.map(post => ({
+        ...post,
+        isReal: false
+    }));
+
+    const allPosts = [...formattedRealPosts, ...compatibleMockPosts];
+
+    const filteredPosts = allPosts.filter(post => {
       let matchesCategory = true;
       switch (communityFilter) {
         case '전체글': matchesCategory = true; break;
@@ -1201,22 +1473,26 @@ const App: React.FC = () => {
         case '정보공유': matchesCategory = post.tag === '멘토링'; break;
         case '중고장터': matchesCategory = post.tag === '중고'; break;
         case '구인구직': matchesCategory = false; break;
-        case '즐겨찾기': matchesCategory = bookmarkedPosts.includes(post.id); break;
+        case '즐겨찾기': matchesCategory = bookmarkedPosts.includes(String(post.id)); break;
         default: matchesCategory = true;
       }
       let matchesTab = true;
       if (communityCategory === '인기') {
         matchesTab = post.category === 'popular' || post.likes >= 50 || post.views >= 500;
       } else if (communityCategory === '추천') {
-        matchesTab = post.likes >= 20; 
+        matchesTab = post.likes >= 20;
       }
       return matchesCategory && matchesTab;
     });
 
     return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in">
+      {/* Left Sidebar */}
       <div className="lg:col-span-3 space-y-6">
-         <button className="w-full py-4 bg-black text-white font-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2">
+         <button
+            onClick={() => session ? setShowWriteModal(true) : alert("로그인이 필요합니다.")}
+            className="w-full py-4 bg-black text-white font-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] hover:translate-x-[2px] hover:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2"
+         >
            <Edit3 size={18} /> 글쓰기
          </button>
          <div className="bg-white border-2 border-black rounded-xl overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -1235,11 +1511,49 @@ const App: React.FC = () => {
             ))}
          </div>
       </div>
+
+      {/* Main Content */}
       <div className="lg:col-span-9 space-y-4">
+         {/* Login Panel */}
+         <div className="bg-white border-2 border-black p-4 rounded-xl mb-6 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm">
+            {session ? (
+                <div className="flex items-center gap-4 w-full justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center font-black text-blue-600">
+                            {getUserName()[0]}
+                        </div>
+                        <span className="font-bold text-sm">{getUserName()}님, 환영합니다!</span>
+                    </div>
+                    <button onClick={handleLogout} className="text-xs font-black text-gray-500 underline hover:text-black">로그아웃</button>
+                </div>
+            ) : (
+                <div className="flex flex-col md:flex-row gap-2 w-full">
+                    <input
+                      className="border-2 border-gray-200 p-2 rounded-lg text-xs font-bold flex-grow focus:border-black outline-none"
+                      placeholder="이메일"
+                      value={emailInput}
+                      onChange={e => setEmailInput(e.target.value)}
+                    />
+                    <input
+                      className="border-2 border-gray-200 p-2 rounded-lg text-xs font-bold flex-grow focus:border-black outline-none"
+                      type="password"
+                      placeholder="비밀번호"
+                      value={passwordInput}
+                      onChange={e => setPasswordInput(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                        <button onClick={handleLogin} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-black text-xs hover:bg-blue-700 whitespace-nowrap">로그인</button>
+                        <button onClick={() => { setIsSignUpMode(true); setShowLoginModal(true); }} className="bg-white text-black border-2 border-black px-4 py-2 rounded-lg font-black text-xs hover:bg-gray-50 whitespace-nowrap">가입</button>
+                    </div>
+                </div>
+            )}
+         </div>
+
+         {/* Tabs */}
          <div className="flex gap-4 border-b-2 border-gray-200 pb-1 mb-4">
             {['최신', '인기', '추천'].map(cat => (
-               <button 
-                 key={cat} 
+               <button
+                 key={cat}
                  onClick={() => setCommunityCategory(cat)}
                  className={`font-black text-lg px-4 py-2 relative ${communityCategory === cat ? 'text-black' : 'text-gray-400'}`}
                >
@@ -1248,6 +1562,8 @@ const App: React.FC = () => {
                </button>
             ))}
          </div>
+
+         {/* Post List */}
          {filteredPosts.length > 0 ? (
            filteredPosts.map(post => (
              <div key={post.id} className="bg-white border-2 border-gray-200 p-6 rounded-xl hover:border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all cursor-pointer group">
@@ -1258,12 +1574,12 @@ const App: React.FC = () => {
                       </span>
                       <h3 className="font-black text-lg group-hover:text-blue-600 transition-colors">{post.title}</h3>
                    </div>
-                   <button onClick={(e) => togglePostBookmark(e, post.id)} className="text-gray-400 hover:text-blue-500 transition-colors">
-                      <Bookmark size={20} className={bookmarkedPosts.includes(post.id) ? "fill-blue-500 text-blue-500" : ""} />
+                   <button onClick={(e) => togglePostBookmark(e, String(post.id))} className="text-gray-400 hover:text-blue-500 transition-colors">
+                      <Bookmark size={20} className={bookmarkedPosts.includes(String(post.id)) ? "fill-blue-500 text-blue-500" : ""} />
                    </button>
                 </div>
-                <p className="text-gray-600 text-sm font-bold mb-4 line-clamp-2">{post.content}</p>
-                <div className="flex justify-between items-center text-xs font-bold text-gray-400">
+                <p className="text-gray-600 text-sm font-bold mb-4 line-clamp-2 whitespace-pre-wrap">{post.content}</p>
+                <div className="flex justify-between items-center text-xs font-bold text-gray-400 border-b border-gray-100 pb-4 mb-4">
                    <div className="flex items-center gap-4">
                       <span className="text-gray-900">{post.author}</span>
                       <span>{post.time}</span>
@@ -1274,27 +1590,100 @@ const App: React.FC = () => {
                       <span className="flex items-center gap-1"><MessageIcon size={12}/> {post.comments}</span>
                    </div>
                 </div>
+
+                {/* Comment Section Integration */}
+                <div className="bg-gray-50 p-4 rounded-lg" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => {
+                        if (selectedPostId === post.id) setSelectedPostId(null);
+                        else {
+                          setSelectedPostId(post.id);
+                          if (post.isReal) {
+                              fetchComments(post.id as number);
+                          }
+                        }
+                      }}
+                      className="text-xs font-black text-blue-600 mb-2 hover:underline flex items-center gap-1"
+                    >
+                      {selectedPostId === post.id ? '댓글 접기' : '댓글 보기 / 작성'}
+                      {!post.isReal && <span className="text-gray-400 no-underline ml-2">(예시 글)</span>}
+                    </button>
+
+                    {selectedPostId === post.id && (
+                      <div className="mt-2 animate-in slide-in-from-top-2">
+                        <div className="space-y-2 mb-4">
+                          {(post.isReal ? realComments : (localComments[post.id] || [])).length === 0 ? (
+                              <p className="text-xs text-gray-400">댓글이 없습니다.</p>
+                          ) : (
+                              (post.isReal ? realComments : (localComments[post.id] || [])).map(comment => (
+                                <div key={comment.id} className="text-sm border-b border-gray-200 pb-1">
+                                  <span className="font-bold mr-2">{comment.author_email.split('@')[0]}:</span>
+                                  <span>{comment.content}</span>
+                                </div>
+                              ))
+                          )}
+                        </div>
+                        {session && (
+                          <div className="flex gap-2">
+                            <input
+                              className="flex-grow border-2 border-gray-300 rounded-lg p-2 text-sm"
+                              placeholder="댓글을 입력하세요..."
+                              value={writingComment}
+                              onChange={e => setWritingComment(e.target.value)}
+                            />
+                            <button
+                              onClick={() => handleCreateComment(post.id)}
+                              className="bg-black text-white px-3 py-1 rounded-lg font-black text-xs"
+                            >
+                              등록
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                </div>
              </div>
            ))
          ) : (
            <div className="flex flex-col items-center justify-center py-20 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
               <Inbox size={48} className="text-gray-300 mb-4" />
               <p className="text-gray-400 font-bold">
-                {communityFilter === '즐겨찾기' 
-                  ? '즐겨찾기한 게시글이 없습니다.' 
+                {communityFilter === '즐겨찾기'
+                  ? '즐겨찾기한 게시글이 없습니다.'
                   : '등록된 게시글이 없습니다.'}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {communityFilter === '즐겨찾기' 
-                  ? '마음에 드는 글의 북마크 아이콘을 눌러보세요!' 
-                  : '첫 번째 글을 작성해보세요!'}
               </p>
            </div>
          )}
       </div>
+
+      {/* Write Modal (Global) */}
+      {showWriteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white w-full max-w-lg p-6 rounded-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <h3 className="text-2xl font-black mb-4">새 글 작성</h3>
+            <input
+              className="w-full border-2 border-black p-3 rounded-lg font-bold mb-4"
+              placeholder="제목"
+              value={writingTitle}
+              onChange={e => setWritingTitle(e.target.value)}
+            />
+            <textarea
+              className="w-full h-40 border-2 border-black p-3 rounded-lg font-bold mb-4 resize-none"
+              placeholder="내용을 자유롭게 적어주세요."
+              value={writingContent}
+              onChange={e => setWritingContent(e.target.value)}
+            />
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setShowWriteModal(false)} className="px-4 py-2 font-bold text-gray-500 hover:text-black">취소</button>
+              <button onClick={handleCreatePost} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all">등록하기</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     );
   };
+
 
   const renderChat = () => (
     <div className="space-y-8 animate-in fade-in">
@@ -1309,7 +1698,7 @@ const App: React.FC = () => {
        </div>
        <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
           {['전체', '호주', '캐나다', '뉴질랜드', '일본', '영국', '독일', '프랑스', '아일랜드'].map(country => (
-             <button 
+             <button
                 key={country}
                 onClick={() => setActiveChatCountry(country)}
                 className={`flex-shrink-0 w-20 h-20 rounded-xl border-2 font-black flex flex-col items-center justify-center gap-1 transition-all ${activeChatCountry === country ? 'bg-blue-600 text-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]' : 'bg-white border-gray-200 text-gray-400 hover:border-black hover:text-black'}`}
@@ -1350,6 +1739,9 @@ const App: React.FC = () => {
     const dDayLabel = getDDayString(departureDate);
     const targetCountryName = COUNTRIES.find(c => c.id === selectedCountry)?.name || '호주';
 
+    // 내가 쓴 글 개수 계산
+    const myPostCount = session ? realPosts.filter(post => post.user_id === session.user.id).length : 0;
+
     return (
     <div className="space-y-8 animate-in fade-in">
       <div className="bg-white border-2 border-black rounded-xl p-8 flex flex-col md:flex-row items-center gap-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
@@ -1357,15 +1749,15 @@ const App: React.FC = () => {
             Free Member
          </div>
          <div className="w-32 h-32 rounded-full border-4 border-black bg-[#FACC15] flex items-center justify-center text-5xl font-black shadow-lg">
-            홍
+            {getUserName()[0]}
          </div>
          <div className="flex-grow text-center md:text-left">
-            <h2 className="text-3xl font-black mb-2">홍길동 <span className="text-lg text-gray-400 font-bold ml-2">@hong_gildong</span></h2>
+            <h2 className="text-3xl font-black mb-2">{getUserName()} <span className="text-lg text-gray-400 font-bold ml-2">@{session?.user?.email?.split('@')[0] || 'guest'}</span></h2>
             <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm font-bold text-gray-600 mb-6">
                <span className="flex items-center gap-1"><MapPin size={16}/> {targetCountryName} ({dDayLabel})</span>
                <span className="flex items-center gap-1"><Briefcase size={16}/> 바리스타 준비중</span>
             </div>
-            <button 
+            <button
                onClick={() => setShowUpgradeModal(true)}
                className="bg-black text-white px-6 py-3 rounded-lg font-black text-sm hover:bg-gray-800 transition-colors shadow-lg flex items-center gap-2 mx-auto md:mx-0"
             >
@@ -1380,11 +1772,11 @@ const App: React.FC = () => {
                <div>
                   <label className="block text-xs font-black text-gray-500 mb-1">이메일</label>
                   <div className="flex gap-2">
-                     <input 
+                     <input
                         disabled={!isEditingEmail}
-                        value={email} 
+                        value={session?.user?.email || email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`flex-grow p-3 border-2 rounded-lg font-bold text-sm ${isEditingEmail ? 'border-blue-500 bg-white' : 'border-gray-200 bg-gray-50'}`} 
+                        className={`flex-grow p-3 border-2 rounded-lg font-bold text-sm ${isEditingEmail ? 'border-blue-500 bg-white' : 'border-gray-200 bg-gray-50'}`}
                      />
                      <button onClick={handleEmailEdit} className="px-4 font-black text-xs bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
                         {isEditingEmail ? '저장' : '수정'}
@@ -1395,11 +1787,11 @@ const App: React.FC = () => {
                <div>
                   <label className="block text-xs font-black text-gray-500 mb-1">휴대폰 번호</label>
                   <div className="flex gap-2">
-                     <input 
+                     <input
                         disabled={!isEditingPhone}
-                        value={phone} 
+                        value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className={`flex-grow p-3 border-2 rounded-lg font-bold text-sm ${isEditingPhone ? 'border-blue-500 bg-white' : 'border-gray-200 bg-gray-50'}`} 
+                        className={`flex-grow p-3 border-2 rounded-lg font-bold text-sm ${isEditingPhone ? 'border-blue-500 bg-white' : 'border-gray-200 bg-gray-50'}`}
                      />
                      <button onClick={handlePhoneEdit} className="px-4 font-black text-xs bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
                         {isEditingPhone ? '저장' : '수정'}
@@ -1426,7 +1818,7 @@ const App: React.FC = () => {
                </div>
                <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-100">
                   <p className="text-xs font-bold text-gray-500 mb-1">작성한 글</p>
-                  <p className="text-3xl font-black text-gray-900">0</p>
+                  <p className="text-3xl font-black text-gray-900">{myPostCount}</p>
                </div>
             </div>
          </div>
@@ -1478,8 +1870,8 @@ const App: React.FC = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {governmentPrograms.map((prog, idx) => (
-                      <a 
-                        key={idx} 
+                      <a
+                        key={idx}
                         href={prog.link}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -1536,7 +1928,7 @@ const App: React.FC = () => {
               <div>
                   <h4 className="font-black text-yellow-700 mb-1">주의사항</h4>
                   <p className="text-sm font-bold text-yellow-600/80 leading-relaxed">
-                      위 정보는 2025년 기준 대략적인 요건이며, 각국 이민성의 정책 변경에 따라 수시로 달라질 수 있습니다. 
+                      위 정보는 2025년 기준 대략적인 요건이며, 각국 이민성의 정책 변경에 따라 수시로 달라질 수 있습니다.
                       비자 신청 전 반드시 해당 국가 이민성 공식 홈페이지 또는 대사관 공지를 확인하시기 바랍니다.
                   </p>
               </div>
@@ -1548,12 +1940,12 @@ const App: React.FC = () => {
   const renderBookmarksDrawer = () => (
       <>
         {showBookmarks && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/20 z-[60] backdrop-blur-sm"
             onClick={() => setShowBookmarks(false)}
           />
         )}
-        <div 
+        <div
           className={`fixed top-0 right-0 h-full w-96 bg-white border-l-4 border-black shadow-[-8px_0px_0px_0px_rgba(0,0,0,0.1)] z-[70] transform transition-transform duration-300 flex flex-col bookmark-area ${
             showBookmarks ? 'translate-x-0' : 'translate-x-full'
           }`}
@@ -1565,13 +1957,13 @@ const App: React.FC = () => {
               <button onClick={() => setShowBookmarks(false)}><X size={24} className="hover:scale-110 transition-transform"/></button>
           </div>
           <div className="flex border-b-2 border-black">
-              <button 
+              <button
                   onClick={() => setBookmarkTab('store')}
                   className={`flex-1 py-3 font-black text-sm uppercase transition-colors ${bookmarkTab === 'store' ? 'bg-black text-white' : 'bg-white text-gray-400 hover:text-black'}`}
               >
                   Cart ({cartItems.length})
               </button>
-              <button 
+              <button
                   onClick={() => setBookmarkTab('community')}
                   className={`flex-1 py-3 font-black text-sm uppercase transition-colors ${bookmarkTab === 'community' ? 'bg-black text-white' : 'bg-white text-gray-400 hover:text-black'}`}
               >
@@ -1609,7 +2001,7 @@ const App: React.FC = () => {
               )}
           </div>
           <div className="p-4 border-t-2 border-black bg-white">
-              <button 
+              <button
                   onClick={() => setActiveTab('mypage')}
                   className="w-full py-3 bg-black text-white font-black rounded-lg hover:bg-gray-800 transition-colors"
               >
@@ -1625,40 +2017,40 @@ const App: React.FC = () => {
       <aside className="w-80 bg-white border-r-4 border-black h-screen sticky top-0 flex flex-col z-50 hidden lg:flex">
         <div className="p-10 border-b-4 border-black cursor-pointer group" onClick={() => setActiveTab('home')}>
           <div className="flex flex-col items-start">
-            <img 
-              src="https://i.postimg.cc/xdZTgzvZ/wohol-wonmo-eo-logo.png" 
-              alt="워홀원모어" 
-              className="w-48 mb-2 group-hover:scale-105 transition-transform origin-left object-contain" 
+            <img
+              src="https://i.postimg.cc/xdZTgzvZ/wohol-wonmo-eo-logo.png"
+              alt="워홀원모어"
+              className="w-48 mb-2 group-hover:scale-105 transition-transform origin-left object-contain"
             />
             <span className="text-xs font-bold text-gray-400 tracking-tight">선택만하세요 준비는 저희가 할게요</span>
           </div>
         </div>
         <nav className="flex-grow p-8 space-y-4">
-          <button 
+          <button
             onClick={() => setActiveTab('home')}
             className={`w-full flex items-center gap-4 px-6 py-4 border-4 transition-all font-black text-xl uppercase italic ${activeTab === 'home' ? 'bg-black text-white border-black translate-x-1 translate-y-1' : 'bg-white border-transparent hover:border-black hover:bg-gray-50 hover:scale-105 origin-left'}`}
           >
             <Home size={28} /> Home
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('store')}
             className={`w-full flex items-center gap-4 px-6 py-4 border-4 transition-all font-black text-xl uppercase italic ${activeTab === 'store' ? 'bg-black text-white border-black translate-x-1 translate-y-1' : 'bg-white border-transparent hover:border-black hover:bg-gray-50 hover:scale-105 origin-left'}`}
           >
             <ShoppingBag size={28} /> Store
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('ai')}
             className={`w-full flex items-center gap-4 px-6 py-4 border-4 transition-all font-black text-xl uppercase italic ${activeTab === 'ai' ? 'bg-black text-white border-black translate-x-1 translate-y-1' : 'bg-white border-transparent hover:border-black hover:bg-gray-50 hover:scale-105 origin-left'}`}
           >
             <MessageSquare size={28} /> AI Assistant
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('community')}
             className={`w-full flex items-center gap-4 px-6 py-4 border-4 transition-all font-black text-xl uppercase italic ${activeTab === 'community' ? 'bg-black text-white border-black translate-x-1 translate-y-1' : 'bg-white border-transparent hover:border-black hover:bg-gray-50 hover:scale-105 origin-left'}`}
           >
             <Users size={28} /> Community
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('chat')}
             className={`w-full flex items-center gap-4 px-6 py-4 border-4 transition-all font-black text-xl uppercase italic ${activeTab === 'chat' ? 'bg-black text-white border-black translate-x-1 translate-y-1' : 'bg-white border-transparent hover:border-black hover:bg-gray-50 hover:scale-105 origin-left'}`}
           >
@@ -1666,37 +2058,48 @@ const App: React.FC = () => {
           </button>
         </nav>
         <div className="p-8 border-t-4 border-black space-y-4">
-          <div 
-             onClick={() => setActiveTab('mypage')}
-             className="flex items-center gap-4 p-4 border-2 border-black neo-brutalism bg-blue-100 cursor-pointer hover:bg-blue-200 transition-colors"
-          >
-            <div className="w-10 h-10 rounded-full border-2 border-black overflow-hidden bg-[#FACC15] flex items-center justify-center">
-                <span className="font-black text-lg text-black">홍</span>
-            </div>
-            <div className="overflow-hidden">
-               <p className="font-black truncate">홍길동</p>
-               <p className="text-[10px] font-black uppercase text-gray-500">Free Tier Account</p>
-            </div>
-          </div>
-          <button className="w-full py-3 font-black text-sm uppercase italic hover:underline flex items-center justify-center gap-2">
-            <LogOut size={16} /> Logout
-          </button>
+          {session ? (
+            <>
+              <div
+                 onClick={() => setActiveTab('mypage')}
+                 className="flex items-center gap-4 p-4 border-2 border-black neo-brutalism bg-blue-100 cursor-pointer hover:bg-blue-200 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full border-2 border-black overflow-hidden bg-[#FACC15] flex items-center justify-center">
+                    <span className="font-black text-lg text-black">{getUserName()[0]}</span>
+                </div>
+                <div className="overflow-hidden">
+                   <p className="font-black truncate">{getUserName()}</p>
+                   <p className="text-[10px] font-black uppercase text-gray-500">Free Tier Account</p>
+                </div>
+              </div>
+              <button onClick={handleLogout} className="w-full py-3 font-black text-sm uppercase italic hover:underline flex items-center justify-center gap-2">
+                <LogOut size={16} /> Logout
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => { setIsSignUpMode(false); setShowLoginModal(true); }}
+              className="w-full py-4 bg-black text-white font-black text-lg uppercase italic hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+            >
+              <LogIn size={20} /> Login
+            </button>
+          )}
         </div>
       </aside>
       <div className="flex-grow flex flex-col min-w-0 relative">
         <header className="sticky top-0 z-40 bg-white border-b-4 border-black px-10 py-6 flex justify-between items-center">
           <div className="flex-grow max-w-2xl relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors" size={24} />
-            <input 
-              className="w-full bg-gray-100 border-4 border-transparent focus:border-black focus:bg-white p-4 pl-14 font-black transition-all outline-none" 
+            <input
+              className="w-full bg-gray-100 border-4 border-transparent focus:border-black focus:bg-white p-4 pl-14 font-black transition-all outline-none"
               placeholder="Search for jobs, visas, or experts..."
             />
           </div>
           <div className="flex gap-8 items-center pl-10 relative">
-            <button 
+            <button
                 onClick={() => {
                     setShowReviewModal(true);
-                    setIsReviewSent(false); 
+                    setIsReviewSent(false);
                     setReviewContent('');
                 }}
                 className="bg-black text-white px-4 py-2 rounded-lg font-black text-xs hover:bg-gray-800 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
@@ -1704,7 +2107,7 @@ const App: React.FC = () => {
                 방문자 리뷰(Guest Review)
             </button>
             <div className="relative notification-area">
-              <div 
+              <div
                 className="relative cursor-pointer group hover:scale-110 transition-transform"
                 onClick={() => setShowNotifications(!showNotifications)}
               >
@@ -1755,12 +2158,21 @@ const App: React.FC = () => {
                )}
             </div>
             <HelpCircle size={28} className="cursor-pointer hover:scale-110 transition-transform" onClick={() => setActiveTab('info')} />
-            <div 
-              onClick={() => setActiveTab('mypage')}
-              className="w-12 h-12 rounded-full border-2 border-black overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] bg-[#FACC15] flex items-center justify-center"
-            >
-               <span className="font-black text-xl text-black">홍</span>
-            </div>
+            {session ? (
+              <div
+                onClick={() => setActiveTab('mypage')}
+                className="w-12 h-12 rounded-full border-2 border-black overflow-hidden cursor-pointer hover:scale-110 transition-transform shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] bg-[#FACC15] flex items-center justify-center"
+              >
+                 <span className="font-black text-xl text-black">{getUserName()[0]}</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setIsSignUpMode(false); setShowLoginModal(true); }}
+                className="bg-black text-white px-4 py-2 rounded-lg font-black text-xs hover:bg-gray-800 transition-all"
+              >
+                LOGIN
+              </button>
+            )}
           </div>
         </header>
         <main className="p-12 overflow-y-auto bg-gray-50/50">
@@ -1792,6 +2204,7 @@ const App: React.FC = () => {
         {showInquiryModal && renderInquiryModal()}
         {showUpgradeModal && renderUpgradeModal()}
         {showReviewModal && renderReviewModal()}
+        {showLoginModal && renderLoginModal()}
         {renderBookmarksDrawer()}
         {/*{activeTab !== 'ai' && <ChatBot />}*/}
         <footer className="mt-auto bg-white border-t-4 border-black p-10">
