@@ -155,6 +155,10 @@ const App: React.FC = () => {
   const [writingComment, setWritingComment] = useState(''); // 댓글 쓰기 내용
   const [selectedPostId, setSelectedPostId] = useState<number | string | null>(null); // 현재 보고 있는 글 ID
   const [showWriteModal, setShowWriteModal] = useState(false); // 글쓰기 창 띄우기
+  
+  // 게시글 수정 관련 상태
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
 
   // Ref for scroll to preparation list
   const prepListRef = useRef<HTMLDivElement>(null);
@@ -264,7 +268,7 @@ const App: React.FC = () => {
     });
     if (error) alert(error.message);
     else {
-        alert("이메일로 확인 링크를 보냈습니다. 확인 후 로그인해주세요!");
+        alert("이메일로 확인 링크를 보냈습니다. 인증메일이 안왔다면 스팸 메일함을 확인해주세요. 확인 후 로그인해주세요!");
         setShowLoginModal(false);
         // 입력 필드 초기화
         setPasswordInput('');
@@ -280,6 +284,28 @@ const App: React.FC = () => {
     alert("로그아웃 되었습니다.");
   };
 
+  const handleResendEmail = async () => {
+    if (!emailInput) return alert("이메일을 입력해주세요.");
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: emailInput,
+    });
+    if (error) alert(error.message);
+    else alert("인증 메일을 재전송했습니다. 스팸 메일함도 확인해주세요.");
+  };
+
+  const handleDeleteAccount = async () => {
+      if (!session) return;
+      if (window.confirm("정말로 탈퇴하시겠습니까? 탈퇴 시 모든 정보가 삭제되며 복구할 수 없습니다.")) {
+          if (window.confirm("정말로 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+              await supabase.auth.signOut();
+              setSession(null);
+              alert("회원탈퇴가 완료되었습니다.");
+              setActiveTab('home');
+          }
+      }
+  };
+
   // 사용자 이름 가져오기
   const getUserName = () => {
       if (!session) return '게스트';
@@ -291,23 +317,62 @@ const App: React.FC = () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!writingTitle || !writingContent) return alert("제목과 내용을 입력해주세요.");
 
-    const { error } = await supabase.from('posts').insert([
-      { 
-        title: writingTitle, 
-        content: writingContent, 
-        user_id: session.user.id, 
-        author_email: session.user.email 
-      }
-    ]);
+    if (isEditingPost && editingPostId) {
+        const { error } = await supabase.from('posts').update({ 
+            title: writingTitle, 
+            content: writingContent 
+        }).eq('id', editingPostId);
 
-    if (error) alert(error.message);
-    else {
-      alert("게시글이 등록되었습니다!");
-      setShowWriteModal(false);
-      setWritingTitle('');
-      setWritingContent('');
-      fetchPosts(); // 목록 새로고침
+        if (error) alert(error.message);
+        else {
+            alert("게시글이 수정되었습니다!");
+            setShowWriteModal(false);
+            setWritingTitle('');
+            setWritingContent('');
+            setIsEditingPost(false);
+            setEditingPostId(null);
+            fetchPosts();
+        }
+    } else {
+        const { error } = await supabase.from('posts').insert([
+          { 
+            title: writingTitle, 
+            content: writingContent, 
+            user_id: session.user.id, 
+            author_email: session.user.email 
+          }
+        ]);
+
+        if (error) alert(error.message);
+        else {
+          alert("게시글이 등록되었습니다!");
+          setShowWriteModal(false);
+          setWritingTitle('');
+          setWritingContent('');
+          fetchPosts(); // 목록 새로고침
+        }
     }
+  };
+
+  const handleDeletePost = async (e: React.MouseEvent, postId: number) => {
+      e.stopPropagation();
+      if (!confirm("정말로 이 게시글을 삭제하시겠습니까?")) return;
+      
+      const { error } = await supabase.from('posts').delete().eq('id', postId);
+      if (error) alert(error.message);
+      else {
+          alert("게시글이 삭제되었습니다.");
+          fetchPosts();
+      }
+  };
+
+  const handleEditPostClick = (e: React.MouseEvent, post: any) => {
+      e.stopPropagation();
+      setWritingTitle(post.title);
+      setWritingContent(post.content);
+      setEditingPostId(post.id);
+      setIsEditingPost(true);
+      setShowWriteModal(true);
   };
 
   const handleCreateComment = async (postId: number | string) => {
@@ -600,6 +665,10 @@ const App: React.FC = () => {
                       {passwordConfirmInput && passwordInput !== passwordConfirmInput && (
                           <p className="text-red-500 text-xs font-bold mt-1">비밀번호가 일치하지 않습니다.</p>
                       )}
+                      <p className="text-xs text-gray-500 mt-2 font-bold">
+                        * 회원가입 후 이메일 인증이 필요합니다.<br/>
+                        * 인증 메일이 오지 않았다면 스팸 메일함을 확인해주세요.
+                      </p>
                     </div>
                 )}
                 
@@ -609,6 +678,17 @@ const App: React.FC = () => {
                 >
                   {isSignUpMode ? '가입하기' : '로그인하기'}
                 </button>
+
+                {isSignUpMode && (
+                    <div className="text-center mt-2">
+                        <button 
+                            onClick={handleResendEmail}
+                            className="text-xs text-gray-400 hover:text-black underline"
+                        >
+                            인증 메일이 오지 않았나요? (재전송)
+                        </button>
+                    </div>
+                )}
 
                 <div className="text-center mt-4">
                   <span className="text-xs font-bold text-gray-500">
@@ -1452,7 +1532,8 @@ const App: React.FC = () => {
       comments: 0,
       tag: '일반',
       category: 'latest',
-      isReal: true // Flag to identify real posts
+      isReal: true, // Flag to identify real posts
+      user_id: post.user_id // Add user_id for ownership check
     }));
 
     // MOCK_POSTS need to be compatible
@@ -1574,9 +1655,22 @@ const App: React.FC = () => {
                       </span>
                       <h3 className="font-black text-lg group-hover:text-blue-600 transition-colors">{post.title}</h3>
                    </div>
-                   <button onClick={(e) => togglePostBookmark(e, String(post.id))} className="text-gray-400 hover:text-blue-500 transition-colors">
-                      <Bookmark size={20} className={bookmarkedPosts.includes(String(post.id)) ? "fill-blue-500 text-blue-500" : ""} />
-                   </button>
+                   <div className="flex items-center gap-2">
+                       {/* Edit/Delete Buttons for own posts */}
+                       {session && post.isReal && post.user_id === session.user.id && (
+                           <>
+                               <button onClick={(e) => handleEditPostClick(e, post)} className="text-gray-400 hover:text-blue-500 transition-colors">
+                                   <Edit3 size={18} />
+                               </button>
+                               <button onClick={(e) => handleDeletePost(e, post.id as number)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                   <Trash2 size={18} />
+                               </button>
+                           </>
+                       )}
+                       <button onClick={(e) => togglePostBookmark(e, String(post.id))} className="text-gray-400 hover:text-blue-500 transition-colors">
+                          <Bookmark size={20} className={bookmarkedPosts.includes(String(post.id)) ? "fill-blue-500 text-blue-500" : ""} />
+                       </button>
+                   </div>
                 </div>
                 <p className="text-gray-600 text-sm font-bold mb-4 line-clamp-2 whitespace-pre-wrap">{post.content}</p>
                 <div className="flex justify-between items-center text-xs font-bold text-gray-400 border-b border-gray-100 pb-4 mb-4">
@@ -1660,7 +1754,7 @@ const App: React.FC = () => {
       {showWriteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white w-full max-w-lg p-6 rounded-xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <h3 className="text-2xl font-black mb-4">새 글 작성</h3>
+            <h3 className="text-2xl font-black mb-4">{isEditingPost ? '게시글 수정' : '새 글 작성'}</h3>
             <input
               className="w-full border-2 border-black p-3 rounded-lg font-bold mb-4"
               placeholder="제목"
@@ -1674,8 +1768,16 @@ const App: React.FC = () => {
               onChange={e => setWritingContent(e.target.value)}
             />
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowWriteModal(false)} className="px-4 py-2 font-bold text-gray-500 hover:text-black">취소</button>
-              <button onClick={handleCreatePost} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all">등록하기</button>
+              <button onClick={() => {
+                  setShowWriteModal(false);
+                  setIsEditingPost(false);
+                  setEditingPostId(null);
+                  setWritingTitle('');
+                  setWritingContent('');
+              }} className="px-4 py-2 font-bold text-gray-500 hover:text-black">취소</button>
+              <button onClick={handleCreatePost} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all">
+                  {isEditingPost ? '수정하기' : '등록하기'}
+              </button>
             </div>
           </div>
         </div>
@@ -1798,6 +1900,15 @@ const App: React.FC = () => {
                      </button>
                   </div>
                   {phoneSuccessMsg && <p className="text-green-600 text-xs font-bold mt-1">{phoneSuccessMsg}</p>}
+               </div>
+               
+               <div className="pt-4 border-t border-gray-100 mt-4">
+                    <button 
+                        onClick={handleDeleteAccount}
+                        className="text-xs font-black text-red-500 hover:text-red-700 underline"
+                    >
+                        회원 탈퇴
+                    </button>
                </div>
             </div>
          </div>
